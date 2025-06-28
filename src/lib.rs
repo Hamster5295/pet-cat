@@ -126,9 +126,7 @@ async fn predict_cat(url: &str) -> bool {
     };
 
     let resp = resp.as_object().unwrap();
-
-    info!("{:?}", resp);
-
+    
     let Some(result) = resp.get("choices") else {
         info!("Invalid response: {:?}", resp);
         return false;

@@ -22,15 +22,15 @@ struct ConfigFile {
     allow_groups: Vec<i64>,
 }
 
-pub struct Config {
-    pub api_url: String,
-    pub api_key: String,
-    pub model: String,
+pub(crate) struct Config {
+    pub(crate) api_url: String,
+    pub(crate) api_key: String,
+    pub(crate) model: String,
 
-    pub prompt: String,
-    pub pet_cat_img: String,
+    pub(crate) prompt: String,
+    pub(crate) pet_cat_img: String,
 
-    pub allow_groups: Vec<i64>,
+    pub(crate) allow_groups: Vec<i64>,
 }
 
 pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
@@ -54,7 +54,7 @@ pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
         ));
     }
 
-    return Ok(CONFIG.get_or_init(|| Config {
+    Ok(CONFIG.get_or_init(|| Config {
         api_key: config_file.api_key,
         api_url: config_file.api_url,
         model: config_file.model,
@@ -63,5 +63,5 @@ pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
             .unwrap_or("请辨别这张图片是否包含一只真实的猫咪，而非卡通猫咪或表情包。如果这张图片包含**文字**，请回答'否'。".to_string()),
         pet_cat_img: pet_cat.to_string_lossy().into(),
         allow_groups: config_file.allow_groups,
-    }));
+    }))
 }
