@@ -29,7 +29,7 @@ async fn main() {
     .unwrap();
     plugin::on_group_msg(on_group_msg);
 
-    info!("Ready to pet cats!");
+    info!("[pet-cat] Ready to pet cats!");
 }
 
 async fn on_group_msg(event: Arc<GroupMsgEvent>) {
@@ -38,13 +38,13 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>) {
     for img in imgs {
         let map = img.data.as_object();
         if let None = img.data.as_object() {
-            info!("No data provided by image segment. (Strange!)");
+            info!("[pet-cat] No data provided by image segment. (Strange!)");
             continue;
         }
 
         let url = map.unwrap().get("url");
         if let None = url {
-            info!("No url provided by image segment. (Strange!)");
+            info!("[pet-cat] No url provided by image segment. (Strange!)");
             continue;
         }
 
@@ -52,13 +52,11 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>) {
         if url.starts_with("https") {
             url = url.replace("https", "http");
         }
-        info!("Image url: {}", url);
-
         if predict_cat(&url).await {
-            info!("Cat detected, sending pet cat meme...");
+            info!("[pet-cat] Cat detected, sending pet cat meme...");
             send_pet_cat(event.group_id).await;
         } else {
-            info!("No cat detected.")
+            info!("[pet-cat] No cat detected.")
         }
     }
 }
@@ -67,7 +65,7 @@ async fn predict_cat(url: &str) -> bool {
     let config = config::CONFIG.get().unwrap();
     let client = CLIENT.get().unwrap();
 
-    info!("Predicting cat for image: {}", url);
+    info!("[pet-cat] Predicting cat for image: {}", url);
 
     let req = match client
         .post(&config.api_url)
@@ -104,7 +102,7 @@ async fn predict_cat(url: &str) -> bool {
         .build(){
             Ok(req) => req,
             Err(e) => {
-                error!("Failed to build request: {}", e);
+                error!("[pet-cat] Failed to build request: {}", e);
                 return false;
             }
         };
@@ -112,7 +110,7 @@ async fn predict_cat(url: &str) -> bool {
     let resp = match client.execute(req).await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("Failed to get response: {}", e);
+            error!("[pet-cat] Failed to get response: {}", e);
             return false;
         }
     };
@@ -120,7 +118,7 @@ async fn predict_cat(url: &str) -> bool {
     let resp: Value = match resp.json().await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("Failed to parse response: {}", e);
+            error!("[pet-cat] Failed to parse response: {}", e);
             return false;
         }
     };
@@ -128,12 +126,12 @@ async fn predict_cat(url: &str) -> bool {
     let resp = resp.as_object().unwrap();
     
     let Some(result) = resp.get("choices") else {
-        info!("Invalid response: {:?}", resp);
+        info!("[pet-cat] Invalid response: {:?}", resp);
         return false;
     };
 
     let Some(result) = result.as_array().unwrap().get(0) else {
-        info!("No choice provided: {:?}", resp);
+        info!("[pet-cat] No choice provided: {:?}", resp);
         return false;
     };
 
