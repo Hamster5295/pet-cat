@@ -1,7 +1,18 @@
 [package]
-name = "pet-cat"
+name = "kovi-plugin-pet-cat"
+description = "基于 Kovi 框架的自动撸猫插件"
+authors = ["Hamster5295 <hamster5295@163.com>"]
 version = "0.1.0"
 edition = "2024"
+keywords = ["kovi", "plugin"]
+license = "MIT"
+repository = "https://github.com/Hamster5295/pet-cat"
+documentation = "https://docs.rs/kovi-plugin-copycat/latest/kovi_plugin_pet_cat"
+readme = "README.md"
+
+[lib]
+name = "kovi_plugin_pet_cat"
+path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1.0.98"
