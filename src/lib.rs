@@ -27,12 +27,12 @@ async fn main() {
         SetAccessControlList::Adds(config.allow_groups.clone()),
     )
     .unwrap();
-    plugin::on_group_msg(on_msg);
+    plugin::on_group_msg(on_group_msg);
 
     info!("Ready to pet cats!");
 }
 
-async fn on_msg(event: Arc<GroupMsgEvent>) {
+async fn on_group_msg(event: Arc<GroupMsgEvent>) {
     let imgs = event.message.get("image");
 
     for img in imgs {
