@@ -2,12 +2,12 @@
 name = "kovi-plugin-pet-cat"
 description = "基于 Kovi 框架的自动撸猫插件"
 authors = ["Hamster5295 <hamster5295@163.com>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 keywords = ["kovi", "plugin"]
 license = "MIT"
 repository = "https://github.com/Hamster5295/pet-cat"
-documentation = "https://docs.rs/kovi-plugin-copycat"
+documentation = "https://docs.rs/kovi-plugin-pet-cat"
 readme = "README.md"
 
 [lib]
