@@ -7,7 +7,7 @@ edition = "2024"
 keywords = ["kovi", "plugin"]
 license = "MIT"
 repository = "https://github.com/Hamster5295/pet-cat"
-documentation = "https://docs.rs/kovi-plugin-copycat/latest/kovi_plugin_pet_cat"
+documentation = "https://docs.rs/kovi-plugin-copycat"
 readme = "README.md"
 
 [lib]
