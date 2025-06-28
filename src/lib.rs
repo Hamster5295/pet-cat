@@ -7,16 +7,13 @@ use kovi::{
     log::{error, info},
     serde_json::{Value, json},
 };
-use std::sync::{Arc, OnceLock};
-
-static BOT: OnceLock<Arc<RuntimeBot>> = OnceLock::new();
-static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+use reqwest::Client;
+use std::sync::Arc;
 
 #[kovi::plugin]
 async fn main() {
     let bot = plugin::get_runtime_bot();
-    BOT.get_or_init(|| bot.clone());
-    CLIENT.get_or_init(|| reqwest::ClientBuilder::new().build().unwrap());
+    let client = Arc::new(reqwest::ClientBuilder::new().build().unwrap());
 
     let config = config::init(&bot).await.unwrap();
 
@@ -27,12 +24,16 @@ async fn main() {
         SetAccessControlList::Adds(config.allow_groups.clone()),
     )
     .unwrap();
-    plugin::on_group_msg(on_group_msg);
+    plugin::on_group_msg({
+        let bot = bot.clone();
+        let client = client.clone();
+        move |msg| on_group_msg(msg, bot.clone(), client.clone())
+    });
 
     info!("[pet-cat] Ready to pet cats!");
 }
 
-async fn on_group_msg(event: Arc<GroupMsgEvent>) {
+async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: Arc<Client>) {
     let imgs = event.message.get("image");
 
     for img in imgs {
@@ -52,18 +53,17 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>) {
         if url.starts_with("https") {
             url = url.replace("https", "http");
         }
-        if predict_cat(&url).await {
+        if predict_cat(&url, &client).await {
             info!("[pet-cat] Cat detected, sending pet cat meme...");
-            send_pet_cat(event.group_id).await;
+            send_pet_cat(event.group_id, &bot).await;
         } else {
             info!("[pet-cat] No cat detected.")
         }
     }
 }
 
-async fn predict_cat(url: &str) -> bool {
+async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     let config = config::CONFIG.get().unwrap();
-    let client = CLIENT.get().unwrap();
 
     info!("[pet-cat] Predicting cat for image: {}", url);
 
@@ -124,7 +124,7 @@ async fn predict_cat(url: &str) -> bool {
     };
 
     let resp = resp.as_object().unwrap();
-    
+
     let Some(result) = resp.get("choices") else {
         info!("[pet-cat] Invalid response: {:?}", resp);
         return false;
@@ -144,8 +144,7 @@ async fn predict_cat(url: &str) -> bool {
     false
 }
 
-async fn send_pet_cat(group: i64) {
-    let bot = BOT.get().unwrap();
+async fn send_pet_cat(group: i64, bot: &Arc<RuntimeBot>) {
     let config = config::CONFIG.get().unwrap();
     bot.send_group_msg(
         group,
