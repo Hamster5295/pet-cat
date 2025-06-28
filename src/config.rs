@@ -60,7 +60,7 @@ pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
         model: config_file.model,
         prompt: config_file
             .prompt
-            .unwrap_or("请辨别这张图片是否包含一只真实的猫咪，而非卡通猫咪或表情包。".to_string()),
+            .unwrap_or("请辨别这张图片是否包含一只真实的猫咪，而非卡通猫咪或表情包。如果这张图片包含**文字**，请回答'否'。".to_string()),
         pet_cat_img: pet_cat.to_string_lossy().into(),
         allow_groups: config_file.allow_groups,
     }));
