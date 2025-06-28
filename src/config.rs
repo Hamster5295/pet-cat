@@ -19,7 +19,7 @@ struct ConfigFile {
     prompt: Option<String>,
     pet_cat_img: String,
 
-    allow_groups: Vec<i64>,
+    allow_groups: Option<Vec<i64>>,
 }
 
 pub(crate) struct Config {
@@ -30,7 +30,7 @@ pub(crate) struct Config {
     pub(crate) prompt: String,
     pub(crate) pet_cat_img: String,
 
-    pub(crate) allow_groups: Vec<i64>,
+    pub(crate) allow_groups: Option<Vec<i64>>,
 }
 
 pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {

@@ -17,13 +17,18 @@ async fn main() {
 
     let config = config::init(&bot).await.unwrap();
 
-    bot.set_plugin_access_control("pet-cat", true).unwrap();
-    bot.set_plugin_access_control_list(
-        "pet-cat",
-        true,
-        SetAccessControlList::Adds(config.allow_groups.clone()),
-    )
-    .unwrap();
+    if let Some(groups) = &config.allow_groups {
+        bot.set_plugin_access_control("pet-cat", true).unwrap();
+        bot.set_plugin_access_control_list(
+            "pet-cat",
+            true,
+            SetAccessControlList::Adds(groups.clone()),
+        )
+        .unwrap();
+    } else {
+        bot.set_plugin_access_control("pet-cat", false).unwrap();
+    }
+
     plugin::on_group_msg({
         let bot = bot.clone();
         let client = client.clone();
