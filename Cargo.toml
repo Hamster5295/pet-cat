@@ -2,7 +2,7 @@
 name = "kovi-plugin-pet-cat"
 description = "基于 Kovi 框架的自动撸猫插件"
 authors = ["Hamster5295 <hamster5295@163.com>"]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 keywords = ["kovi", "plugin"]
 license = "MIT"
@@ -15,11 +15,11 @@ name = "kovi_plugin_pet_cat"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow = "1.0.98"
-axum = "0.8.4"
-kovi = "0.12.3"
-new_mime_guess = "4.0.4"
-reqwest = { version = "0.12.20", features = ["json"] }
-serde = { version = "1.0.219", features = ["derive"] }
-tokio-util = { version = "0.7.15", features = ["io"] }
-toml = "0.8.23"
+anyhow = ">=1.0.98"
+axum = ">=0.8.4"
+kovi = ">=0.12.3"
+new_mime_guess = ">=4.0.4"
+reqwest = { version = ">=0.12.20", features = ["json"] }
+serde = { version = ">=1.0.219", features = ["derive"] }
+tokio-util = { version = ">=0.7.15", features = ["io"] }
+toml = ">=0.8.23"
