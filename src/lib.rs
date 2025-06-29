@@ -10,6 +10,8 @@ use kovi::{
 use reqwest::Client;
 use std::sync::Arc;
 
+const PLUGIN_NAME: &str = "kovi-plugin-pet-cat";
+
 #[kovi::plugin]
 async fn main() {
     let bot = plugin::get_runtime_bot();
@@ -18,15 +20,15 @@ async fn main() {
     let config = config::init(&bot).await.unwrap();
 
     if let Some(groups) = &config.allow_groups {
-        bot.set_plugin_access_control("pet-cat", true).unwrap();
+        bot.set_plugin_access_control(PLUGIN_NAME, true).unwrap();
         bot.set_plugin_access_control_list(
-            "pet-cat",
+            PLUGIN_NAME,
             true,
             SetAccessControlList::Adds(groups.clone()),
         )
         .unwrap();
     } else {
-        bot.set_plugin_access_control("pet-cat", false).unwrap();
+        bot.set_plugin_access_control(PLUGIN_NAME, false).unwrap();
     }
 
     plugin::on_group_msg({
