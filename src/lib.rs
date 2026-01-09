@@ -6,9 +6,12 @@ use kovi::{
     event::GroupMsgEvent,
     log::{error, info},
     serde_json::{Value, json},
+    tokio::task::JoinSet,
 };
 use reqwest::Client;
 use std::sync::Arc;
+
+use crate::config::Condition;
 
 const PLUGIN_NAME: &str = "kovi-plugin-pet-cat";
 
@@ -45,13 +48,13 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
 
     for img in imgs {
         let map = img.data.as_object();
-        if let None = img.data.as_object() {
+        if img.data.as_object().is_none() {
             info!("[pet-cat] No data provided by image segment. (Strange!)");
             continue;
         }
 
         let url = map.unwrap().get("url");
-        if let None = url {
+        if url.is_none() {
             info!("[pet-cat] No url provided by image segment. (Strange!)");
             continue;
         }
@@ -70,10 +73,28 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
 }
 
 async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
+    info!("[pet-cat] Predicting cat for image: {url}");
+
     let config = config::CONFIG.get().unwrap();
+    let mut set = JoinSet::new();
 
-    info!("[pet-cat] Predicting cat for image: {}", url);
+    for c in &config.conditions {
+        set.spawn(predict_cond(url.to_string(), client.clone(), &c));
+    }
 
+    let mut flag = true;
+    while let Some(res) = set.join_next().await {
+        match res {
+            Ok(res) => flag &= res,
+            Err(e) => error!("[pet-cat] Error when querying llm: {e}"),
+        }
+    }
+
+    flag
+}
+
+async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> bool {
+    let config = config::CONFIG.get().unwrap();
     let req = match client
         .post(&config.api_url)
         .bearer_auth(&config.api_key)
@@ -100,16 +121,17 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
                         },
                         {
                             "type": "text",
-                            "text": config.prompt
+                            "text": cond.prompt
                         }
                     ]
                 }
-            ]
+            ],
+            "stream": false,
         }))
         .build(){
             Ok(req) => req,
             Err(e) => {
-                error!("[pet-cat] Failed to build request: {}", e);
+                error!("[pet-cat] Failed to build request: {e}");
                 return false;
             }
         };
@@ -117,7 +139,7 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     let resp = match client.execute(req).await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("[pet-cat] Failed to get response: {}", e);
+            error!("[pet-cat] Failed to get response: {e}");
             return false;
         }
     };
@@ -125,7 +147,7 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     let resp: Value = match resp.json().await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("[pet-cat] Failed to parse response: {}", e);
+            error!("[pet-cat] Failed to parse response: {e}");
             return false;
         }
     };
@@ -133,22 +155,25 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     let resp = resp.as_object().unwrap();
 
     let Some(result) = resp.get("choices") else {
-        info!("[pet-cat] Invalid response: {:?}", resp);
+        info!("[pet-cat] Invalid response: {resp:?}");
         return false;
     };
 
-    let Some(result) = result.as_array().unwrap().get(0) else {
-        info!("[pet-cat] No choice provided: {:?}", resp);
+    let Some(result) = result.as_array().unwrap().first() else {
+        info!("[pet-cat] No choice provided: {resp:?}");
         return false;
     };
 
     let result = result["message"]["content"].as_str();
 
+    let mut flag = false;
+
     if let Some(s) = result {
-        return s.trim() == "是";
+        flag = s.trim() == cond.prediction;
     }
 
-    false
+    info!("[pet-cat] Predicting \"{}\": {flag}", cond.name);
+    flag
 }
 
 async fn send_pet_cat(group: i64, bot: &Arc<RuntimeBot>) {

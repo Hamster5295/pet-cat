@@ -11,12 +11,19 @@ use serde::Deserialize;
 pub(crate) static CONFIG: OnceLock<Config> = OnceLock::new();
 
 #[derive(Deserialize)]
+pub(crate) struct Condition {
+    pub(crate) name: String,
+    pub(crate) prompt: String,
+    pub(crate) prediction: String,
+}
+
+#[derive(Deserialize)]
 struct ConfigFile {
     api_url: String,
     api_key: String,
     model: String,
 
-    prompt: Option<String>,
+    conditions: Vec<Condition>,
     pet_cat_img: String,
 
     allow_groups: Option<Vec<i64>>,
@@ -27,7 +34,7 @@ pub(crate) struct Config {
     pub(crate) api_key: String,
     pub(crate) model: String,
 
-    pub(crate) prompt: String,
+    pub(crate) conditions: Vec<Condition>,
     pub(crate) pet_cat_img: String,
 
     pub(crate) allow_groups: Option<Vec<i64>>,
@@ -54,13 +61,15 @@ pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
         ));
     }
 
+    if config_file.conditions.is_empty() {
+        return Err(anyhow::anyhow!("No conditions provided in config file"));
+    }
+
     Ok(CONFIG.get_or_init(|| Config {
         api_key: config_file.api_key,
         api_url: config_file.api_url,
         model: config_file.model,
-        prompt: config_file
-            .prompt
-            .unwrap_or("请辨别这张图片是否包含一只真实的猫咪，而非卡通猫咪或表情包。如果这张图片包含**文字**，请回答'否'。".to_string()),
+        conditions: config_file.conditions,
         pet_cat_img: pet_cat.to_string_lossy().into(),
         allow_groups: config_file.allow_groups,
     }))
