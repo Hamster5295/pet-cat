@@ -1,3 +1,4 @@
+mod consts;
 mod config;
 
 use kovi::{
@@ -12,9 +13,8 @@ use kovi_onebot::*;
 use reqwest::Client;
 use std::sync::Arc;
 
-use crate::config::Condition;
-
-const PLUGIN_NAME: &str = "kovi-plugin-pet-cat";
+use config::Condition;
+use consts::*;
 
 #[kovi::plugin]
 async fn main() {
@@ -41,7 +41,7 @@ async fn main() {
         move |msg| on_group_msg(msg, bot.clone(), client.clone())
     });
 
-    info!("[pet-cat] Ready to pet cats!");
+    info!("[{PLUGIN_HEAD}] Ready to pet cats!");
 }
 
 async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: Arc<Client>) {
@@ -50,13 +50,13 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
     for img in imgs {
         let map = img.data.as_object();
         if img.data.as_object().is_none() {
-            info!("[pet-cat] No data provided by image segment. (Strange!)");
+            info!("[{PLUGIN_HEAD}] No data provided by image segment. (Strange!)");
             continue;
         }
 
         let url = map.unwrap().get("url");
         if url.is_none() {
-            info!("[pet-cat] No url provided by image segment. (Strange!)");
+            info!("[{PLUGIN_HEAD}] No url provided by image segment. (Strange!)");
             continue;
         }
 
@@ -65,16 +65,16 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
             url = url.replace("https", "http");
         }
         if predict_cat(&url, &client).await {
-            info!("[pet-cat] Cat detected, sending pet cat meme...");
+            info!("[{PLUGIN_HEAD}] Cat detected, sending pet cat meme...");
             send_pet_cat(event.group_id, &bot).await;
         } else {
-            info!("[pet-cat] No cat detected.")
+            info!("[{PLUGIN_HEAD}] No cat detected.")
         }
     }
 }
 
 async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
-    info!("[pet-cat] Predicting cat for image: {url}");
+    info!("[{PLUGIN_HEAD}] Predicting cat for image: {url}");
 
     let config = config::CONFIG.get().unwrap();
     let mut set = JoinSet::new();
@@ -87,7 +87,7 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     while let Some(res) = set.join_next().await {
         match res {
             Ok(res) => flag &= res,
-            Err(e) => error!("[pet-cat] Error when querying llm: {e}"),
+            Err(e) => error!("[{PLUGIN_HEAD}] Error when querying llm: {e}"),
         }
     }
 
@@ -132,7 +132,7 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
         .build(){
             Ok(req) => req,
             Err(e) => {
-                error!("[pet-cat] Failed to build request: {e}");
+                error!("[{PLUGIN_HEAD}] Failed to build request: {e}");
                 return false;
             }
         };
@@ -140,7 +140,7 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
     let resp = match client.execute(req).await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("[pet-cat] Failed to get response: {e}");
+            error!("[{PLUGIN_HEAD}] Failed to get response: {e}");
             return false;
         }
     };
@@ -148,7 +148,7 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
     let resp: Value = match resp.json().await {
         Ok(resp) => resp,
         Err(e) => {
-            error!("[pet-cat] Failed to parse response: {e}");
+            error!("[{PLUGIN_HEAD}] Failed to parse response: {e}");
             return false;
         }
     };
@@ -156,12 +156,12 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
     let resp = resp.as_object().unwrap();
 
     let Some(result) = resp.get("choices") else {
-        info!("[pet-cat] Invalid response: {resp:?}");
+        info!("[{PLUGIN_HEAD}] Invalid response: {resp:?}");
         return false;
     };
 
     let Some(result) = result.as_array().unwrap().first() else {
-        info!("[pet-cat] No choice provided: {resp:?}");
+        info!("[{PLUGIN_HEAD}] No choice provided: {resp:?}");
         return false;
     };
 
@@ -173,7 +173,7 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
         flag = s.trim() == cond.prediction;
     }
 
-    info!("[pet-cat] Predicting \"{}\": {flag}", cond.name);
+    info!("[{PLUGIN_HEAD}] Predicting \"{}\": {flag}", cond.name);
     flag
 }
 
