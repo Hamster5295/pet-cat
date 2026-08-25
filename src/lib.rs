@@ -1,10 +1,9 @@
-mod consts;
 mod config;
+mod consts;
 
 use kovi::{
     Message, PluginBuilder as plugin, RuntimeBot,
     bot::runtimebot::kovi_api::SetAccessControlList,
-    event::id::ID,
     log::{error, info},
     serde_json::{Value, json},
     tokio::task::JoinSet,
@@ -28,7 +27,7 @@ async fn main() {
         bot.set_plugin_access_control_list(
             PLUGIN_NAME,
             true,
-            SetAccessControlList::Adds(groups.iter().cloned().map(ID::new).collect()),
+            SetAccessControlList::Adds(groups.clone()),
         )
         .unwrap();
     } else {

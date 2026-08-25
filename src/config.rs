@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use kovi::{RuntimeBot, tokio::fs};
+use kovi::{RuntimeBot, event::id::ID, tokio::fs};
 use serde::Deserialize;
 use crate::consts::*;
 
@@ -27,7 +27,7 @@ struct ConfigFile {
     conditions: Vec<Condition>,
     pet_cat_img: String,
 
-    allow_groups: Option<Vec<i64>>,
+    allow_groups: Option<Vec<ID>>,
 }
 
 pub(crate) struct Config {
@@ -38,7 +38,7 @@ pub(crate) struct Config {
     pub(crate) conditions: Vec<Condition>,
     pub(crate) pet_cat_img: String,
 
-    pub(crate) allow_groups: Option<Vec<i64>>,
+    pub(crate) allow_groups: Option<Vec<ID>>,
 }
 
 pub(crate) async fn init(bot: &Arc<RuntimeBot>) -> Result<&Config> {
