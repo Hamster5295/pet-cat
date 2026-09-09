@@ -6,11 +6,11 @@ use kovi::{
     Message, PluginBuilder as plugin, RuntimeBot,
     bot::runtimebot::kovi_api::SetAccessControlList,
     log::{error, info},
-    serde_json::{Value, json},
+    serde_json::json,
     tokio::task::JoinSet,
 };
 use kovi_onebot::*;
-use reqwest::Client;
+use openai_oxide::{ClientConfig, OpenAI, types::chat::*};
 use std::sync::Arc;
 
 use config::Condition;
@@ -19,12 +19,15 @@ use consts::*;
 #[kovi::plugin]
 async fn main() {
     let bot = plugin::get_runtime_bot();
-    let client = Arc::new(reqwest::ClientBuilder::new().build().unwrap());
 
     let config = config::init(&bot)
         .await
         .with_context(|| format!("[{PLUGIN_HEAD}] Error when parsing config"))
         .unwrap();
+
+    let client = Arc::new(OpenAI::with_config(
+        ClientConfig::new(config.api_key.clone()).base_url(config.api_url.clone()),
+    ));
 
     if let Some(groups) = &config.allow_groups {
         bot.set_plugin_access_control(PLUGIN_NAME, true).unwrap();
@@ -47,7 +50,7 @@ async fn main() {
     info!("[{PLUGIN_HEAD}] Ready to pet cats!");
 }
 
-async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: Arc<Client>) {
+async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: Arc<OpenAI>) {
     let imgs = event.message.get("image");
 
     for img in imgs {
@@ -63,10 +66,10 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
             continue;
         }
 
-        let mut url = url.unwrap().as_str().unwrap().to_string();
-        if url.starts_with("https") {
-            url = url.replace("https", "http");
-        }
+        let url = url.unwrap().as_str().unwrap().to_string();
+        // if url.starts_with("https") {
+        //     url = url.replace("https", "http");
+        // }
         if predict_cat(&url, &client).await {
             info!("[{PLUGIN_HEAD}] Cat detected, sending pet cat meme...");
             send_pet_cat(event.group_id, &bot).await;
@@ -76,14 +79,14 @@ async fn on_group_msg(event: Arc<GroupMsgEvent>, bot: Arc<RuntimeBot>, client: A
     }
 }
 
-async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
+async fn predict_cat(url: &str, client: &Arc<OpenAI>) -> bool {
     info!("[{PLUGIN_HEAD}] Predicting cat for image: {url}");
 
     let config = config::CONFIG.get().unwrap();
     let mut set = JoinSet::new();
 
     for c in &config.conditions {
-        set.spawn(predict_cond(url.to_string(), client.clone(), &c));
+        set.spawn(predict_cond(url.to_string(), client.clone(), c));
     }
 
     let mut flag = true;
@@ -97,50 +100,20 @@ async fn predict_cat(url: &str, client: &Arc<Client>) -> bool {
     flag
 }
 
-async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> bool {
+async fn predict_cond(url: String, client: Arc<OpenAI>, cond: &Condition) -> bool {
     let config = config::CONFIG.get().unwrap();
-    let req = match client
-        .post(&config.api_url)
-        .bearer_auth(&config.api_key)
-        .json(&json!({
-            "model": config.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "你是一个专业的图片分辨专家，可以精确地依据用户的指示，分辨图片中是否包含某一特定物体。**你只能回答 是 或 否，不要做出多余的回答或进行解释**。"
-                        }
-                    ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": url
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": cond.prompt
-                        }
-                    ]
-                }
-            ],
-            "stream": false,
-        }))
-        .build(){
-            Ok(req) => req,
-            Err(e) => {
-                error!("[{PLUGIN_HEAD}] Failed to build request: {e}");
-                return false;
-            }
-        };
 
-    let resp = match client.execute(req).await {
+    let chat = client.chat();
+    let comp = chat.completions();
+    let req = comp.create(ChatCompletionRequest::new(config.model.clone(), vec![
+            ChatCompletionMessageParam::System { content: "你是一个专业的图片分辨专家，可以精确地依据用户的指示，分辨图片中是否包含某一特定物体。**你只能回答 是 或 否**，**不要**做出多余的回答或进行解释。".to_string(), name: None },
+            ChatCompletionMessageParam::User { content: UserContent::Parts(vec![
+                ContentPart::ImageUrl { image_url: ImageUrl { url, detail: None } },
+                ContentPart::Text { text: cond.prompt.clone() }
+            ]), name: None }
+        ]));
+
+    let resp = match req.await {
         Ok(resp) => resp,
         Err(e) => {
             error!("[{PLUGIN_HEAD}] Failed to get response: {e}");
@@ -148,27 +121,12 @@ async fn predict_cond(url: String, client: Arc<Client>, cond: &Condition) -> boo
         }
     };
 
-    let resp: Value = match resp.json().await {
-        Ok(resp) => resp,
-        Err(e) => {
-            error!("[{PLUGIN_HEAD}] Failed to parse response: {e}");
-            return false;
-        }
-    };
-
-    let resp = resp.as_object().unwrap();
-
-    let Some(result) = resp.get("choices") else {
-        info!("[{PLUGIN_HEAD}] Invalid response: {resp:?}");
-        return false;
-    };
-
-    let Some(result) = result.as_array().unwrap().first() else {
+    let Some(result) = resp.choices.first() else {
         info!("[{PLUGIN_HEAD}] No choice provided: {resp:?}");
         return false;
     };
 
-    let result = result["message"]["content"].as_str();
+    let result = result.message.content.clone();
 
     let mut flag = false;
 
